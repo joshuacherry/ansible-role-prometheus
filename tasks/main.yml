@@ -1,0 +1,17 @@
+---
+- name: PROMETHEUS | Ensure Prometheus group
+  group:
+    name: "{{ prometheus_group }}"
+    system: yes
+    state: present
+
+- name: PROMETHEUS | Ensure Prometheus user
+  user:
+    name: "{{ prometheus_user }}"
+    comment: "prometheus user account"
+    createhome: no
+    system: yes
+    shell: /bin/false
+
+- include_tasks: install-prometheus.yml
+  static: no

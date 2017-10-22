@@ -1,0 +1,45 @@
+---
+## General
+prometheus_version: 1.8.0
+prometheus_release_system: linux-amd64
+prometheus_checksum: 5028defde39c4b9975b6174a2dbf29983cbae9f18e9d8313d9187d4b1078da27
+
+prometheus_force_reinstall: false
+
+## Service Options
+
+prometheus_user: prometheus
+prometheus_group: prometheus
+
+# Files & Paths
+prometheus_log_file: "prometheus.log"
+prometheus_log_path: "/var/log/prometheus"
+prometheus_root_path: /opt/prometheus
+prometheus_bin_path: "{{ prometheus_root_path }}/bin"
+prometheus_data_dir: "{{ prometheus_root_path }}/data"
+prometheus_config_dir: /etc/prometheus
+
+# Port & host
+prometheus_port: 9090
+prometheus_external_hostname: "{{ ansible_fqdn }}"
+
+prometheus_enable_remote_shutdown: 'false'
+
+# ALERTMANAGER
+prometheus_alertmanager_host: localhost
+prometheus_alertmanager_port: 9093
+
+# STORAGE
+prometheus_storage_target_heap_size: 2000000000
+prometheus_storage_retention: 180h0m0s
+prometheus_storage_retention_local_series_file_shrink_ratio: 0.03
+
+prometheus_options:
+  - "config.file {{ prometheus_config_dir }}/prometheus.yml"
+  - "storage.local.target-heap-size={{ prometheus_storage_target_heap_size }}"
+  - "storage.local.path={{ prometheus_data_dir }}"
+  - "web.external-url=http://{{ prometheus_external_hostname }}:{{ prometheus_port }}/"
+  - "web.enable-remote-shutdown={{ prometheus_enable_remote_shutdown }}"
+  - "alertmanager.url=http://{{ prometheus_alertmanager_host }}:{{ prometheus_alertmanager_port }}"
+  - "storage.local.retention={{ prometheus_storage_retention }}"
+  - "storage.local.series-file-shrink-ratio={{ prometheus_storage_retention_local_series_file_shrink_ratio }}"

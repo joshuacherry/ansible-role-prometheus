@@ -1,0 +1,13 @@
+global:
+  scrape_interval: 30s
+  evaluation_interval: 5s
+
+scrape_configs:
+  - job_name: 'prometheus_statistics'
+    static_configs:
+      - targets:
+        - {{ ansible_fqdn }}:9090
+  - job_name: 'prometheus'
+    static_configs:
+      - targets:
+        - {{ ansible_fqdn }}:9100

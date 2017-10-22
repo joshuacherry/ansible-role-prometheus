@@ -1,0 +1,91 @@
+---
+- name: PROMETHEUS | Create Directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+  with_items:
+    - "{{ prometheus_root_path }}"
+    - "{{ prometheus_data_dir }}"
+    - "{{ prometheus_bin_path }}"
+    - "{{ prometheus_config_dir }}"
+    - "{{ prometheus_log_path }}"
+
+- name: PROMETHEUS | Check prometheus version
+  command: prometheus --version
+  register: prometheus_check
+  changed_when: false
+  ignore_errors: true
+
+- name: PROMETHEUS | Download file with check (sha256)
+  get_url:
+    url: "{{ prometheus_url }}"
+    dest: "/tmp"
+    # Get checksum with `sha256sum filename_here`
+    checksum: "sha256:{{ prometheus_checksum }}"
+  when: 'prometheus_force_reinstall or prometheus_check|failed or "prometheus, version prometheus_version" not in prometheus_check.stderr'
+
+- name: PROMETHEUS | Extract Package
+  unarchive:
+    copy: no
+    src: "/tmp/{{ prometheus_package }}"
+    dest: "/tmp"
+  when: 'prometheus_force_reinstall or prometheus_check|failed or "prometheus, version prometheus_version" not in prometheus_check.stderr'
+
+- name: PROMETHEUS | Copy binaries
+  copy:
+    src: "/tmp/{{ prometheus_release_name }}/{{ item }}"
+    dest: "{{ prometheus_bin_path }}/{{ item }}"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    remote_src: True
+    mode: 0755
+  with_items:
+    - prometheus
+    - promtool
+  when: 'prometheus_force_reinstall or prometheus_check|failed or "prometheus, version prometheus_version" not in prometheus_check.stderr'
+
+- name: PROMETHEUS | Link binary
+  file:
+    src: "{{ prometheus_bin_path }}/{{ item }}"
+    dest: "/usr/bin/{{ item }}"
+    state: link
+  with_items:
+    - prometheus
+    - promtool
+
+- name: PROMETHEUS | Copy Daemon script
+  template:
+    src: prometheus.service.j2
+    dest: /etc/systemd/system/prometheus.service
+    owner: root
+    group: root
+    mode: 0644
+  notify: restart prometheus
+
+
+- name: "PROMETHEUS | Manage {{ prometheus_config_dir }}/prometheus.yml"
+  template:
+    src: prometheus.yml.j2
+    dest: "{{ prometheus_config_dir }}/prometheus.yml"
+    owner: "{{ prometheus_user }}"
+    group: "{{ prometheus_group }}"
+    mode: 0644
+  notify:
+    - restart prometheus
+
+- name: PROMETHEUS | Copy logrotate config
+  template:
+    src: logrotate.j2
+    dest: /etc/logrotate.d/prometheus
+    mode: 0644
+    owner: root
+    group: root
+
+- name: PROMETHEUS | Configure systemd service
+  systemd:
+    state: started
+    enabled: yes
+    daemon_reload: yes
+    name: prometheus
